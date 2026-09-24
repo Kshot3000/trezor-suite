@@ -58,6 +58,7 @@ export const initBluetoothThunk = createThunk<
         // TODO: check if redux.status != status && status == enabled
         // and fetch bluetoothIpc.getInfo() again
         dispatch(bluetoothActions.adapterEventAction({ status }));
+        extra.services.bluetooth.restartBackgroundScan();
     });
 
     bluetoothIpc.on('device-list-update', nearbyDevicesIpc => {
@@ -73,6 +74,8 @@ export const initBluetoothThunk = createThunk<
                 knownDevices: remappedKnownDevices,
             }),
         );
+        extra.services.bluetooth.restartBackgroundScan();
+
         dispatch(
             bluetoothActions.nearbyDevicesUpdateAction({
                 nearbyDevices,
@@ -89,6 +92,7 @@ export const initBluetoothThunk = createThunk<
         device = fixLinuxManufacturerData(device, knownDevice);
 
         dispatch(bluetoothActions.deviceUpdateAction({ device }));
+        extra.services.bluetooth.restartBackgroundScan();
     });
 
     bluetoothIpc.on('open-bluetooth-settings', async ({ id }) => {
