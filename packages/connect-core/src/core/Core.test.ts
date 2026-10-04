@@ -1,6 +1,15 @@
+import {
+    CORE_CALL,
+    type CoreCallMessage,
+    type CoreEventMessage,
+    RESPONSE_EVENT,
+    UI_EVENTS,
+} from '@trezor/connect-common';
 import { parseConnectSettings } from '@trezor/connect-common/src/data/connectSettings';
 import type { ConnectSettings } from '@trezor/connect-common/src/types/settings';
+import { createDeferred } from '@trezor/utils';
 
+import { getMethod } from './method';
 import * as firmwareReleaseStore from '../data/firmwareReleaseStore';
 
 import { initCoreState } from './index';
@@ -20,6 +29,11 @@ jest.mock('../data/firmwareReleaseStore', () => {
 });
 
 jest.spyOn(global, 'fetch').mockImplementation(() => Promise.reject());
+
+jest.mock('./method', () => ({
+    __esModule: true,
+    getMethod: jest.fn(),
+}));
 
 // import { createTestTransport } from '../device/__tests__/DeviceList.test';
 const { createTestTransport } = global.JestMocks;
@@ -73,6 +87,75 @@ describe('Core', () => {
         await new Promise(resolve => setTimeout(resolve, 1));
         // transport events emitted in next tick
         expect(eventsSpy.mock.calls).toMatchObject([[{ type: 'transport-start' }]]);
+
+        coreManager.dispose();
+    });
+});
+
+describe('Core device lock events', () => {
+    const DEVICE_CALL: CoreCallMessage = {
+        type: CORE_CALL,
+        id: '1',
+        payload: { method: 'getAddress', path: "m/84'/0'/0'/0/0" },
+    };
+
+    const getLockLifecycle = (eventsSpy: jest.Mock) =>
+        eventsSpy.mock.calls
+            .map(([message]: [CoreEventMessage]) => message)
+            .filter(
+                message =>
+                    message.type === UI_EVENTS.DEVICE_LOCK ||
+                    message.type === UI_EVENTS.DEVICE_UNLOCK ||
+                    message.event === RESPONSE_EVENT,
+            )
+            .map(message =>
+                message.event === RESPONSE_EVENT ? `response:${message.success}` : message.type,
+            );
+
+    const flush = () => new Promise(resolve => setTimeout(resolve, 1));
+
+    it('locks before initAsync and unlocks before the error response when initAsync fails', async () => {
+        const initAsync = createDeferred();
+        (getMethod as jest.Mock).mockResolvedValue({
+            name: 'getAddress',
+            useDevice: true,
+            initAsync: () => initAsync.promise,
+        });
+
+        const coreManager = initCoreState();
+        const eventsSpy = jest.fn();
+        const core = await coreManager.getOrInit(getSettings(), eventsSpy);
+
+        core.handleMessage(DEVICE_CALL);
+        await flush();
+        expect(getLockLifecycle(eventsSpy)).toEqual([UI_EVENTS.DEVICE_LOCK]);
+
+        initAsync.reject(new Error('definitions unavailable'));
+        await flush();
+        expect(getLockLifecycle(eventsSpy)).toEqual([
+            UI_EVENTS.DEVICE_LOCK,
+            UI_EVENTS.DEVICE_UNLOCK,
+            'response:false',
+        ]);
+
+        coreManager.dispose();
+    });
+
+    it('does not lock for __info of a device method', async () => {
+        (getMethod as jest.Mock).mockResolvedValue({
+            name: 'getAddress',
+            useDevice: true,
+            responseID: '1',
+            getMethodInfo: () => ({}),
+        });
+
+        const coreManager = initCoreState();
+        const eventsSpy = jest.fn();
+        const core = await coreManager.getOrInit(getSettings(), eventsSpy);
+
+        core.handleMessage({ ...DEVICE_CALL, payload: { ...DEVICE_CALL.payload, __info: true } });
+        await flush();
+        expect(getLockLifecycle(eventsSpy)).toEqual(['response:true']);
 
         coreManager.dispose();
     });
