@@ -35,6 +35,7 @@ import {
     isEvmApprovalTxByTextSignature,
     isEvmYieldTxByTextSignature,
     isExchangeTradingForm,
+    isRbfBumpFeeTransaction,
     isRbfCancelTransaction,
     subunitsToUnits,
     tryGetAccountIdentity,
@@ -91,6 +92,11 @@ import {
     type SyncAccountsWithBlockchainThunkState,
     syncAccountsWithBlockchainThunk,
 } from '../blockchain/blockchainThunks';
+import {
+    EARN_TRANSACTION_TOAST_TYPE,
+    type EarnTransactionsRootState,
+    selectTrackedEarnTransaction,
+} from '../earn/earnTransactionsReducer';
 import { type FeesRootState } from '../fees/feesReducer';
 import {
     type WalletSettingsRootState,
@@ -432,7 +438,8 @@ export const synchronizeSentTransactionThunk = createThunk<
     },
 );
 
-export type PushSendFormTransactionThunkState = SynchronizeSentTransactionThunkState;
+export type PushSendFormTransactionThunkState = EarnTransactionsRootState &
+    SynchronizeSentTransactionThunkState;
 
 export type PushSendFormTransactionThunkDeps = {
     actions: OnModalCancelDep;
@@ -495,6 +502,13 @@ export const pushSendFormTransactionThunk = createThunk<
             : '0';
 
         const evmApprovalData = Calldata.evm.erc20.approve.decode(precomposedForm?.transactionData);
+        const spedUpEarnTransaction = isRbfBumpFeeTransaction(precomposedTransaction)
+            ? selectTrackedEarnTransaction(
+                  getState(),
+                  selectedAccount.key,
+                  precomposedTransaction.prevTxid,
+              )
+            : undefined;
 
         if (pushTxResponse.success) {
             const { txid } = pushTxResponse.payload;
@@ -535,6 +549,17 @@ export const pushSendFormTransactionThunk = createThunk<
                         symbol: selectedAccount.symbol,
                         txid,
                         style: { maxWidth: 'auto' },
+                    }),
+                );
+            } else if (spedUpEarnTransaction) {
+                dispatch(
+                    notificationsActions.addToast({
+                        type: EARN_TRANSACTION_TOAST_TYPE[spedUpEarnTransaction.flow],
+                        stage: 'sped-up',
+                        device,
+                        descriptor: selectedAccount.descriptor,
+                        symbol: selectedAccount.symbol,
+                        txid,
                     }),
                 );
             } else {
