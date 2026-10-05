@@ -13,6 +13,7 @@ import {
     requiresTokenApproval,
     selectTradingExchangeDexQuoteApprovalPrefetchLoadingByQuoteId,
     selectTradingExchangeIsLoading,
+    selectTradingExchangeQuotesRequest,
     tradingExchangeActions,
 } from '@suite-common/trading';
 import { useWatch } from '@suite-native/forms';
@@ -41,6 +42,17 @@ type NavigationProps = StackToStackCompositeNavigationProps<
     RootStackParamList
 >;
 
+// Selecting a quote clears the form amount, which invalidates the quotes request before the trade
+// is confirmed. DEX trades need the request `fromAddress` (e.g. the bitcoin swap input
+// addresses), so it is kept on the selected quote.
+const getQuoteWithRequestFromAddress = (
+    quote: ExchangeTrade,
+    requestFromAddress: string | undefined,
+): ExchangeTrade =>
+    quote.isDex && !quote.fromAddress && requestFromAddress
+        ? { ...quote, fromAddress: requestFromAddress }
+        : quote;
+
 export const useExchangeSelectQuote = (form: ExchangeFormType) => {
     const { dispatch } = useServices(injectDispatch);
     const candidateQuote = useWatch({ name: 'quote', control: form.control });
@@ -56,6 +68,7 @@ export const useExchangeSelectQuote = (form: ExchangeFormType) => {
     );
     const sendAccount = useSelector(selectExchangeSelectedSendAccount);
     const receiveAccount = useSelector(selectExchangeSelectedReceiveAccount);
+    const quotesRequest = useSelector(selectTradingExchangeQuotesRequest);
 
     const navigation = useNavigation<NavigationProps>();
 
@@ -93,12 +106,14 @@ export const useExchangeSelectQuote = (form: ExchangeFormType) => {
             return;
         }
 
+        const quote = getQuoteWithRequestFromAddress(candidateQuote, quotesRequest?.fromAddress);
+
         await dispatch(
             exchangeThunks.selectQuoteThunk({
-                quote: candidateQuote,
+                quote,
                 nextStep: () => {
                     clearExchangeFormQuoteData(form);
-                    nextStep(getApprovalStatus(candidateQuote), candidateQuote);
+                    nextStep(getApprovalStatus(quote), quote);
                 },
             }),
         );
