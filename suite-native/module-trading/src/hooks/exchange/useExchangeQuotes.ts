@@ -138,7 +138,7 @@ const useExchangeQuotesThunk = (
               })
             : undefined;
 
-        // A newer request started while the swap inputs were being composed.
+        // The form changed, unmounted or a newer request started while the swap inputs were being composed.
         if (fetchId !== latestFetchIdRef.current) {
             return;
         }
@@ -170,6 +170,10 @@ const useExchangeQuotesThunk = (
         }
 
         requestQuotes();
+
+        return () => {
+            latestFetchIdRef.current += 1;
+        };
     }, [
         isFetchAllowed,
         sendAsset,
