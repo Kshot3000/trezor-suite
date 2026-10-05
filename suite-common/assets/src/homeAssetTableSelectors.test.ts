@@ -318,7 +318,15 @@ describe('the total over the wallet', () => {
     });
 
     it('adds up every asset of the wallet', () => {
-        expect(selectHomeAssetTotals(state).fiatValue.toFixed()).toBe('56000');
+        expect(selectHomeAssetTotals(state).fiatValue?.toFixed()).toBe('56000');
+    });
+
+    it('says nothing at all while no asset of the wallet can be priced', () => {
+        const unpriced = createState({
+            accounts: [mockAccount({ symbol: ETH, balance: '2' })],
+        });
+
+        expect(selectHomeAssetTotals(unpriced).fiatValue).toBeUndefined();
     });
 
     it('says nothing about a week ago when no rate for it is known', () => {

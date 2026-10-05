@@ -281,7 +281,8 @@ export const selectWalletAssetTokenDecimals = (
 ) => selectWalletAsset(state, assetKey)?.tokenDecimals;
 
 export type HomeAssetTotals = {
-    fiatValue: BigNumber;
+    /** Undefined while nothing the wallet holds can be priced — a total of zero would be a lie. */
+    fiatValue: BigNumber | undefined;
     weekChange: BigNumber | undefined;
     weekChangePercent: BigNumber | undefined;
 };
@@ -298,7 +299,8 @@ export const selectHomeAssetTotals = createMemoizedSelector(
                 ZERO_FIAT_VALUE,
             );
 
-        const fiatValue = addUp(values, assetKeys);
+        const priced = assetKeys.filter(assetKey => values.has(assetKey));
+        const fiatValue = priced.length === 0 ? undefined : addUp(values, priced);
 
         // An asset priced in only one of the two weeks would read as a gain or a loss it never
         // made, so the change is over the assets both weeks could price.
