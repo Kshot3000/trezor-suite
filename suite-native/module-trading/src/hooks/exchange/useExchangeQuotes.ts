@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useEffect, useEffectEvent, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useStore } from 'react-redux';
 
 import { isFulfilled } from '@reduxjs/toolkit';
 import type { ExchangeTrade } from 'invity-api';
@@ -9,12 +9,19 @@ import { injectDispatch } from '@suite-common/redux-utils';
 import { invariant } from '@suite-common/suite-utils';
 import {
     type HandleExchangeRequestThunkProps,
+    type TradingRootState,
     cryptoIdToNetwork,
     exchangeThunks,
+    selectTradingBtcSwapComposeTemplate,
     selectTradingExchangeIsLoading,
     useTradingRefetchScheduler,
 } from '@suite-common/trading';
-import { type WalletSettingsRootState, selectIsAmountInSats } from '@suite-common/wallet-core';
+import {
+    type FeesRootState,
+    type WalletSettingsRootState,
+    selectConvertedNetworkFeeInfo,
+    selectIsAmountInSats,
+} from '@suite-common/wallet-core';
 import { type AnalyticsNativeEvents, events, injectNativeAnalytics } from '@suite-native/analytics';
 import { useFormState, useWatch } from '@suite-native/forms';
 import { getSymbolFromTradeableAsset } from '@suite-native/trading-atoms';
@@ -24,6 +31,7 @@ import { type Analytics } from '@trezor/analytics-uploader';
 import { useDebounce } from '@trezor/react-utils';
 import { noop } from '@trezor/utils';
 
+import { getBitcoinSwapFromAddress } from '../../utils/exchange/bitcoinSwapUtils';
 import { tradingExchangeFormToTradingExchangeFormProps } from '../../utils/exchange/quotesUtils';
 import { getReceiveAccountAddressText } from '../../utils/general/receiveAccountUtils';
 import { useQuotesInvalidator } from '../general/useQuotesInvalidator';
@@ -91,6 +99,7 @@ const useExchangeQuotesThunk = (
     debounce: ReturnType<typeof useDebounce>,
 ) => {
     const { analytics, dispatch } = useServices(injectNativeAnalytics, injectDispatch);
+    const store = useStore<TradingRootState & FeesRootState>();
     const asset = useWatch({ control, name: 'sendAsset' });
     const symbol = getSymbolFromTradeableAsset(asset);
     const shouldSendInSats = useSelector((state: WalletSettingsRootState) =>
@@ -105,14 +114,39 @@ const useExchangeQuotesThunk = (
         receiveAccountAddress,
     } = requestState;
 
+    const latestFetchIdRef = useRef(0);
+
     const fetchQuotes = useCallback(async () => {
+        latestFetchIdRef.current += 1;
+        const fetchId = latestFetchIdRef.current;
+
         const selectedAsset = getValues('sendAsset');
         invariant(selectedAsset, 'Asset is not defined');
         const network = cryptoIdToNetwork(selectedAsset.cryptoId);
         invariant(network, `Network not found for [${selectedAsset.cryptoId}]`);
 
+        const formValues = tradingExchangeFormToTradingExchangeFormProps(getValues);
+        const sendAccount = getValues('sendAccount');
+        const state = store.getState();
+        const bitcoinSwapFromAddress = sendAccount
+            ? await getBitcoinSwapFromAddress({
+                  account: sendAccount,
+                  btcSwapComposeTemplate: selectTradingBtcSwapComposeTemplate(state),
+                  feeInfo: selectConvertedNetworkFeeInfo(state, sendAccount.symbol),
+                  sendCryptoAmount: formValues.outputs[0]?.amount ?? '',
+                  shouldSendInSats,
+              })
+            : undefined;
+
+        // A newer request started while the swap inputs were being composed.
+        if (fetchId !== latestFetchIdRef.current) {
+            return;
+        }
+
         const payload: HandleExchangeRequestThunkProps = {
-            formValues: tradingExchangeFormToTradingExchangeFormProps(getValues),
+            formValues: bitcoinSwapFromAddress
+                ? { ...formValues, fromAddress: bitcoinSwapFromAddress }
+                : formValues,
             network,
             shouldSendInSats,
             composeRequestCallback: noop,
@@ -120,7 +154,7 @@ const useExchangeQuotesThunk = (
 
         quotesPromiseRef.current = dispatch(exchangeThunks.handleRequestThunk(payload));
         await waitForPromiseAndReport(quotesPromiseRef.current, analytics);
-    }, [getValues, shouldSendInSats, quotesPromiseRef, dispatch, analytics]);
+    }, [getValues, shouldSendInSats, quotesPromiseRef, dispatch, analytics, store]);
 
     const requestQuotes = useEffectEvent(() => {
         if (quotesPromiseRef.current?.abort) {

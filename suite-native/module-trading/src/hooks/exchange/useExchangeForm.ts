@@ -28,6 +28,7 @@ import {
 } from '@suite-native/trading-state';
 import type { ExchangeFormType, ExchangeFormValues } from '@suite-native/trading-types';
 
+import { useBitcoinSwapMaxSpendableAmount } from './useBitcoinSwapMaxSpendableAmount';
 import { exchangeFormValidationSchema } from '../../utils/exchange/exchangeFormValidationSchema';
 import { type TradingFormWithMetadata } from '../general/form/tradingFormTypes';
 import { useContextForTradingForm } from '../general/form/useContextForTradingForm';
@@ -222,13 +223,17 @@ const useValidations = ({
 export const useExchangeForm = (): TradingFormWithMetadata<ExchangeFormType> => {
     const limits = useSelector(selectExchangeAmountLimits);
     const {
-        context,
+        context: tradingFormContext,
         setBalance,
         setSendNetworkSymbol,
         setSendAssetSymbol,
         setContractAddress,
         setAccountKey,
     } = useContextForTradingForm(limits);
+    const maxSpendableAmount = useBitcoinSwapMaxSpendableAmount(
+        tradingFormContext.maxSpendableAmount,
+    );
+    const context = { ...tradingFormContext, maxSpendableAmount };
 
     const form = useForm<ExchangeFormValues>({
         validation: exchangeFormValidationSchema,
