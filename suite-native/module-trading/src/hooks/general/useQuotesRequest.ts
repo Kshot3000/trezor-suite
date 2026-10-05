@@ -1,10 +1,12 @@
 import { useEffect, useEffectEvent, useRef } from 'react';
 
+import { useIsFocused } from '@react-navigation/native';
 import { type ActionCreatorWithoutPayload, isFulfilled } from '@reduxjs/toolkit';
 
 import { useTradingRefetchScheduler } from '@suite-common/trading';
 import { type AbortablePromise } from '@suite-native/trading-types';
 import { useDebounce } from '@trezor/react-utils';
+import { noop } from '@trezor/utils';
 
 import { useQuotesInvalidator } from './useQuotesInvalidator';
 
@@ -42,7 +44,9 @@ export const useQuotesRequest = ({
     clearStateAction,
 }: UseQuotesRequestParams) => {
     const debounce = useDebounce();
+    const isFocused = useIsFocused();
     const quotesPromiseRef = useRef<AbortablePromise | undefined>(undefined);
+    const wasBlurredRef = useRef(false);
     const isFetchAllowed = requestKey !== undefined;
 
     useQuotesInvalidator({
@@ -69,25 +73,49 @@ export const useQuotesRequest = ({
         }
     };
 
-    const requestQuotes = useEffectEvent(() => {
+    const abortQuotesRequest = (reason: string) => {
         if (quotesPromiseRef.current?.abort) {
-            quotesPromiseRef.current.abort('Request was replaced by another one.');
+            quotesPromiseRef.current.abort(reason);
         }
+    };
 
-        debounce(runQuotesRequest);
+    const requestQuotes = useEffectEvent((shouldFetchImmediately: boolean) => {
+        abortQuotesRequest('Request was replaced by another one.');
+
+        if (shouldFetchImmediately) {
+            runQuotesRequest();
+        } else {
+            debounce(runQuotesRequest);
+        }
+    });
+
+    const cancelQuotesRequest = useEffectEvent(() => {
+        debounce(noop);
+        abortQuotesRequest('Screen lost focus.');
     });
 
     useEffect(() => {
+        if (!isFocused) {
+            wasBlurredRef.current = true;
+            cancelQuotesRequest();
+
+            return;
+        }
+
+        // If the screen was blurred, we want to fetch quotes immediately when it regains focus.
+        const shouldFetchImmediately = wasBlurredRef.current;
+        wasBlurredRef.current = false;
+
         if (requestKey === undefined) {
             return;
         }
 
-        requestQuotes();
-    }, [requestKey]);
+        requestQuotes(shouldFetchImmediately);
+    }, [requestKey, isFocused]);
 
     useTradingRefetchScheduler({
         onRefetch: () => {
-            if (!isFetchAllowed) return;
+            if (!isFetchAllowed || !isFocused) return;
             debounce(runQuotesRequest);
         },
     });
