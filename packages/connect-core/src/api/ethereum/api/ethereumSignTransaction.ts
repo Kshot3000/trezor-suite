@@ -192,25 +192,39 @@ export default class EthereumSignTransaction extends AbstractMethod<
         });
     }
 
-    // The device is not known yet, so these definitions are used only to decode the content.
-    async initAsync(): Promise<void> {
-        const definitions = await this.getDefinitions();
-        if (!definitions) return;
+    private displayDefinitions?: Promise<void>;
 
-        this.params.definitions = definitions;
+    // Only `__info` names the network and token, so only `__info` downloads their definitions, once
+    // for both the title and the precomposed transaction. run downloads the ones for the device.
+    private loadDisplayDefinitions() {
+        this.displayDefinitions ??= this.getDefinitions().then(definitions => {
+            if (!definitions) return;
 
-        const decoded = decodeEthereumDefinition(definitions);
-        if (decoded.network) {
-            this.params.network = ethereumNetworkInfoFromDefinition(decoded.network);
-        }
+            this.params.definitions = definitions;
+
+            const decoded = decodeEthereumDefinition(definitions);
+            if (decoded.network) {
+                this.params.network = ethereumNetworkInfoFromDefinition(decoded.network);
+            }
+        });
+
+        return this.displayDefinitions;
+    }
+
+    async getMethodInfo() {
+        await this.loadDisplayDefinitions();
+
+        return super.getMethodInfo();
     }
 
     get info() {
         return getNetworkLabel('Sign #NETWORK transaction', this.params.network);
     }
 
-    payloadToPrecomposed() {
+    async payloadToPrecomposed() {
         try {
+            await this.loadDisplayDefinitions();
+
             const transaction = this.params.originalTx;
             const feePerByte = new BigNumber(transaction.gasPrice || transaction.maxFeePerGas!);
             const fee = feePerByte.multipliedBy(transaction.gasLimit);
@@ -285,12 +299,12 @@ export default class EthereumSignTransaction extends AbstractMethod<
                 network: this.params.network,
             };
 
-            return Promise.resolve(result);
+            return result;
         } catch (e) {
             // Don't throw errors from this method
             console.error('Error in payloadToPrecomposed', e);
 
-            return Promise.resolve(undefined);
+            return undefined;
         }
     }
 
