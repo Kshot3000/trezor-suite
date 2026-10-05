@@ -155,9 +155,24 @@ export const selectShownWalletAssetKeys = createMemoizedSelector(
 
 export type HomeAssetGrouping = 'default' | 'networks';
 
+const haveSameNetworkGrouping = (
+    left: ReadonlyMap<NetworkSymbol, readonly WalletAssetKey[]>,
+    right: ReadonlyMap<NetworkSymbol, readonly WalletAssetKey[]>,
+) =>
+    left.size === right.size &&
+    [...left].every(([symbol, assetKeys]) => {
+        const held = right.get(symbol);
+
+        return (
+            held?.length === assetKeys.length &&
+            assetKeys.every((assetKey, index) => held[index] === assetKey)
+        );
+    });
+
 /**
- * Which rows belong to which network. Built from the shown keys and each key's symbol alone, so a
- * balance or a rate leaves it untouched and every section keeps the very array it was handed.
+ * Which rows belong to which network. It is rebuilt whenever an account is written, but a rebuild
+ * that lands on the same grouping is thrown away, so a balance or a rate leaves every section
+ * holding the very array it was handed.
  */
 const selectShownAssetKeysByNetwork = createMemoizedSelector(
     [selectWalletAssets, selectShownWalletAssetKeys],
@@ -184,6 +199,7 @@ const selectShownAssetKeysByNetwork = createMemoizedSelector(
 
         return byNetwork;
     },
+    { memoizeOptions: { resultEqualityCheck: haveSameNetworkGrouping } },
 );
 
 /**
