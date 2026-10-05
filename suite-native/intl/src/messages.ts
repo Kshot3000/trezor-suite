@@ -5077,6 +5077,8 @@ export const messages = {
             txYieldDeposit: 'Yield deposit from {account}',
             txYieldWithdraw: 'Yield withdrawal from {account}',
             txYieldClaim: 'Yield claim from {account}',
+            txWithdrawn: 'Withdrawal from {account}',
+            txVoted: 'Vote from {account}',
             rawTxSent: 'Sent from {account}',
             txRevoked: 'Revoked in {account}',
             txApproved: 'Approved in {account}',
