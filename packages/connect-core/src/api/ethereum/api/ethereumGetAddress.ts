@@ -69,7 +69,9 @@ export default class EthereumGetAddress extends AbstractMethod<'ethereumGetAddre
         return this.coinPerms('read_address', this.requiredFirmwareCoins);
     }
 
-    async initAsync(): Promise<void> {
+    // Only the `__info` title names networks that are not well-known, so only `__info` downloads
+    // their definitions to decode them. run downloads the ones for the device.
+    async getMethodInfo() {
         for (let i = 0; i < this.params.length; i++) {
             const { params } = this;
             // @ts-expect-error: indexing with noUncheckedIndexedAccess
@@ -86,6 +88,8 @@ export default class EthereumGetAddress extends AbstractMethod<'ethereumGetAddre
                 }
             }
         }
+
+        return super.getMethodInfo();
     }
 
     get info() {
