@@ -40,13 +40,15 @@ export const HomeAssetNetworkSection = memo(({ symbol }: HomeAssetNetworkSection
                     </Text>
                 </Table.Cell>
                 <Table.Cell align="end" padding={HOME_ASSET_CELL_PADDING.last}>
-                    <Text typographyStyle="body-sm" intent="neutral" priority="secondary">
-                        <HiddenPlaceholder>
-                            {BaseCurrencyAmountFormatter.format(
-                                asBaseCurrencyAmount(new BigNumber(fiatValue)),
-                            )}
-                        </HiddenPlaceholder>
-                    </Text>
+                    {fiatValue !== undefined && (
+                        <Text typographyStyle="body-sm" intent="neutral" priority="secondary">
+                            <HiddenPlaceholder>
+                                {BaseCurrencyAmountFormatter.format(
+                                    asBaseCurrencyAmount(new BigNumber(fiatValue)),
+                                )}
+                            </HiddenPlaceholder>
+                        </Text>
+                    )}
                 </Table.Cell>
             </Table.Row>
             {assetKeys.map(assetKey => (

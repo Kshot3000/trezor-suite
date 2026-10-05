@@ -392,4 +392,14 @@ describe('the networks the table can be grouped by', () => {
         expect(selectNetworkFiatValue(state, BTC)).toBe('100000');
         expect(selectNetworkFiatValue(state, ETH)).toBe('3500');
     });
+
+    it('says nothing about what a network is worth while nothing it holds can be priced', () => {
+        const state = createState({
+            accounts: [bitcoin, { ...ethereum, formattedBalance: '1' }],
+            rates: { ...mockRate(BTC, 100000) },
+        });
+
+        expect(selectNetworkFiatValue(state, BTC)).toBe('100000');
+        expect(selectNetworkFiatValue(state, ETH)).toBeUndefined();
+    });
 });

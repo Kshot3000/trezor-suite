@@ -186,16 +186,25 @@ const selectShownAssetKeysByNetwork = createMemoizedSelector(
     },
 );
 
-/** What each network is worth. Only this is redone when a balance or a rate moves. */
+/**
+ * What each network is worth. Only this is redone when a balance or a rate moves. A network nothing
+ * can price — a testnet, or rates that have yet to land — is left out: a total of zero would be a lie.
+ */
 const selectNetworkFiatValues = createMemoizedSelector(
     [selectShownAssetKeysByNetwork, selectWalletAssetValues],
     (byNetwork, values): ReadonlyMap<NetworkSymbol, BigNumber> => {
         const worth = new Map<NetworkSymbol, BigNumber>();
 
         byNetwork.forEach((assetKeys, symbol) => {
+            const priced = assetKeys.filter(assetKey => values.has(assetKey));
+
+            if (priced.length === 0) {
+                return;
+            }
+
             worth.set(
                 symbol,
-                assetKeys.reduce(
+                priced.reduce(
                     (total, assetKey) => total.plus(values.get(assetKey) ?? ZERO_FIAT_VALUE),
                     ZERO_FIAT_VALUE,
                 ),
@@ -237,7 +246,7 @@ export const selectNetworkName = createMemoizedSelector(
 
 export const selectNetworkFiatValue = createMemoizedSelector(
     [selectNetworkFiatValues, (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol],
-    (worth, symbol) => (worth.get(symbol) ?? ZERO_FIAT_VALUE).toFixed(),
+    (worth, symbol) => worth.get(symbol)?.toFixed(),
 );
 
 const selectWalletAsset = createMemoizedSelector(
