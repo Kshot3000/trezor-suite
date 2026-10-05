@@ -1,6 +1,7 @@
 import { shallowEqual } from 'react-redux';
 
 import { type DeviceRootState } from '@suite-common/device';
+import { type NetworksRootState, selectNetworkNamesMap } from '@suite-common/networks';
 import { createWeakMapSelector, returnStableArrayIfEmpty } from '@suite-common/redux-utils';
 import { type NetworkSymbol, getAssetName, getDisplaySymbol } from '@suite-common/wallet-config';
 import {
@@ -25,6 +26,7 @@ import { sumAssetAccounts } from './homeAssetTableUtils';
 
 export type HomeAssetTableState = AssetAccountsRootState &
     DeviceRootState &
+    NetworksRootState &
     FiatRatesRootState &
     WalletSettingsRootState;
 
@@ -149,6 +151,81 @@ export const selectShownWalletAssetKeys = createMemoizedSelector(
                 .sort(byValue(values)),
         ),
     { memoizeOptions: { resultEqualityCheck: shallowEqual } },
+);
+
+export type HomeAssetGrouping = 'default' | 'networks';
+
+type ShownNetwork = {
+    assetKeys: WalletAssetKey[];
+    fiatValue: BigNumber;
+};
+
+/**
+ * One pass over the shown assets answers all three questions the grouping asks: which networks
+ * there are, which rows each holds, and what each is worth.
+ */
+const selectShownNetworksWithFiatBalance = createMemoizedSelector(
+    [selectWalletAssets, selectWalletAssetValues, selectShownWalletAssetKeys],
+    (assets, values, assetKeys): ReadonlyMap<NetworkSymbol, ShownNetwork> => {
+        const networks = new Map<NetworkSymbol, ShownNetwork>();
+
+        assetKeys.forEach(assetKey => {
+            const symbol = assets.get(assetKey)?.symbol;
+
+            if (symbol === undefined) {
+                return;
+            }
+
+            const fiatValue = values.get(assetKey) ?? ZERO_FIAT_VALUE;
+            const network = networks.get(symbol);
+
+            if (network === undefined) {
+                networks.set(symbol, { assetKeys: [assetKey], fiatValue });
+
+                return;
+            }
+
+            network.assetKeys.push(assetKey);
+            network.fiatValue = network.fiatValue.plus(fiatValue);
+        });
+
+        return networks;
+    },
+);
+
+/** The networks the shown assets are held on, the most valuable network first. */
+export const selectShownNetworkSymbols = createMemoizedSelector(
+    [selectShownNetworksWithFiatBalance],
+    (networks): readonly NetworkSymbol[] =>
+        returnStableArrayIfEmpty(
+            [...networks.entries()]
+                .sort(([, left], [, right]) => right.fiatValue.comparedTo(left.fiatValue) ?? 0)
+                .map(([symbol]) => symbol),
+        ),
+    { memoizeOptions: { resultEqualityCheck: shallowEqual } },
+);
+
+export const selectShownWalletAssetKeysOfNetwork = createMemoizedSelector(
+    [
+        selectShownNetworksWithFiatBalance,
+        (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol,
+    ],
+    (networks, symbol): readonly WalletAssetKey[] =>
+        returnStableArrayIfEmpty(networks.get(symbol)?.assetKeys ?? []),
+    { memoizeOptions: { resultEqualityCheck: shallowEqual } },
+);
+
+export const selectNetworkName = createMemoizedSelector(
+    [selectNetworkNamesMap, (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol],
+    (names, symbol) => names?.[symbol],
+);
+
+export const selectNetworkFiatValue = createMemoizedSelector(
+    [
+        selectShownNetworksWithFiatBalance,
+        (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol,
+    ],
+    (networks, symbol) => (networks.get(symbol)?.fiatValue ?? ZERO_FIAT_VALUE).toFixed(),
 );
 
 const selectWalletAsset = createMemoizedSelector(
