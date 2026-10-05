@@ -88,17 +88,23 @@ type ReceivedTransactionNotification = {
     token?: Pick<TokenInfo, 'contract' | 'name' | 'symbol' | 'decimals'>;
 } & TransactionNotificationPayload;
 
+export type EarnTransactionStage = 'pending' | 'confirmed';
+
+type EarnTransactionNotificationPayload = {
+    stage: EarnTransactionStage;
+} & BaseTransactionNotificationPayload;
+
 type StakedTransactionNotification = {
     type: 'tx-staked';
-} & TransactionNotificationPayload;
+} & EarnTransactionNotificationPayload;
 
 type UnstakedTransactionNotification = {
     type: 'tx-unstaked';
-} & TransactionNotificationPayload;
+} & EarnTransactionNotificationPayload;
 
 type ClaimedTransactionNotification = {
     type: 'tx-claimed';
-} & TransactionNotificationPayload;
+} & EarnTransactionNotificationPayload;
 
 type YieldDepositTransactionNotification = {
     type: 'tx-yield-deposit';

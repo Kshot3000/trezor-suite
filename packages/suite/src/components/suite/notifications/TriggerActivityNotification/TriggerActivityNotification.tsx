@@ -126,22 +126,76 @@ const PRESETS: Preset[] = [
             notificationsActions.addToast({ type: 'tx-sent', device, ...MOCK_TX, seen }),
     },
     {
-        value: 'tx-staked',
-        label: 'Transaction: Staked',
+        value: 'tx-staked-pending',
+        label: 'Transaction: Stake pending',
         build: ({ device, seen }) =>
-            notificationsActions.addToast({ type: 'tx-staked', device, ...MOCK_TX, seen }),
+            notificationsActions.addToast({
+                type: 'tx-staked',
+                stage: 'pending',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
     },
     {
-        value: 'tx-unstaked',
-        label: 'Transaction: Unstaked',
+        value: 'tx-staked-confirmed',
+        label: 'Transaction: Stake confirmed',
         build: ({ device, seen }) =>
-            notificationsActions.addToast({ type: 'tx-unstaked', device, ...MOCK_TX, seen }),
+            notificationsActions.addToast({
+                type: 'tx-staked',
+                stage: 'confirmed',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
     },
     {
-        value: 'tx-claimed',
-        label: 'Transaction: Claimed',
+        value: 'tx-unstaked-pending',
+        label: 'Transaction: Unstake pending',
         build: ({ device, seen }) =>
-            notificationsActions.addToast({ type: 'tx-claimed', device, ...MOCK_TX, seen }),
+            notificationsActions.addToast({
+                type: 'tx-unstaked',
+                stage: 'pending',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
+    },
+    {
+        value: 'tx-unstaked-confirmed',
+        label: 'Transaction: Unstake confirmed',
+        build: ({ device, seen }) =>
+            notificationsActions.addToast({
+                type: 'tx-unstaked',
+                stage: 'confirmed',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
+    },
+    {
+        value: 'tx-claimed-pending',
+        label: 'Transaction: Claim pending',
+        build: ({ device, seen }) =>
+            notificationsActions.addToast({
+                type: 'tx-claimed',
+                stage: 'pending',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
+    },
+    {
+        value: 'tx-claimed-confirmed',
+        label: 'Transaction: Claim confirmed',
+        build: ({ device, seen }) =>
+            notificationsActions.addToast({
+                type: 'tx-claimed',
+                stage: 'confirmed',
+                device,
+                ...MOCK_TX,
+                seen,
+            }),
     },
     {
         value: 'successful-claim',

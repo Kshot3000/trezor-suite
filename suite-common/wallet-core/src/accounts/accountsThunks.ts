@@ -44,6 +44,12 @@ import {
     selectBlockchainHeightBySymbol,
     selectGapLimit,
 } from '../blockchain/blockchainReducer';
+import {
+    EARN_TRANSACTION_TOAST_TYPE,
+    type EarnTransactionsRootState,
+    earnTransactionsActions,
+    selectTrackedEarnTransaction,
+} from '../earn/earnTransactionsReducer';
 import { type WalletSettingsRootState } from '../settings/walletSettingsReducer';
 import {
     type StellarContractTokensRootState,
@@ -152,6 +158,7 @@ type FetchAndUpdateAccountThunkParams = {
 export type FetchAndUpdateAccountThunkState = AccountsRootState &
     BlockchainRootState &
     DeviceRootState &
+    EarnTransactionsRootState &
     StellarContractTokensRootState &
     TokenDefinitionsRootState &
     TransactionsRootState &
@@ -281,6 +288,36 @@ export const fetchAndUpdateAccountThunk = createThunk<
             const devices = selectDevices(getState());
             const accountDevice = findAccountDevice(account, devices);
             analyze.newTransactions.forEach(tx => {
+                const trackedEarnTransaction = selectTrackedEarnTransaction(
+                    getState(),
+                    account.key,
+                    tx.txid,
+                );
+
+                if (trackedEarnTransaction) {
+                    dispatch(
+                        earnTransactionsActions.untrackEarnTransaction({
+                            accountKey: account.key,
+                            txid: tx.txid,
+                        }),
+                    );
+
+                    if (tx.type !== 'failed') {
+                        dispatch(
+                            notificationsActions.addToast({
+                                type: EARN_TRANSACTION_TOAST_TYPE[trackedEarnTransaction.flow],
+                                stage: 'confirmed',
+                                device: accountDevice,
+                                descriptor: account.descriptor,
+                                symbol: account.symbol,
+                                txid: tx.txid,
+                            }),
+                        );
+
+                        return;
+                    }
+                }
+
                 const token = tx.tokens?.[0];
 
                 const amount = token

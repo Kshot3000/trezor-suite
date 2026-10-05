@@ -10,7 +10,11 @@ import {
 } from '@suite/intl';
 import { TRADING_ERROR_MESSAGE } from '@suite/trading';
 import { selectSelectedDeviceLabelOrName } from '@suite-common/device';
-import { AUTH_DEVICE, type NotificationEntry } from '@suite-common/toast-notifications';
+import {
+    AUTH_DEVICE,
+    type EarnTransactionStage,
+    type NotificationEntry,
+} from '@suite-common/toast-notifications';
 import { getTradingErrorDisplay } from '@suite-common/trading';
 import { getNetworkDisplaySymbol } from '@suite-common/wallet-config';
 import { DEVICE } from '@trezor/connect';
@@ -35,6 +39,15 @@ import { WrapInfoRenderer } from './WrapInfoRenderer';
 import { type NotificationViewProps } from '../Notifications/NotificationGroup/NotificationList/NotificationView';
 
 type LocalizedNotificationEntry = NotificationEntry<TranslationKey>;
+
+const EARN_TOAST_MESSAGES = {
+    'tx-staked': { pending: 'TOAST_TX_STAKE_PENDING', confirmed: 'TOAST_TX_STAKE_CONFIRMED' },
+    'tx-unstaked': { pending: 'TOAST_TX_UNSTAKE_PENDING', confirmed: 'TOAST_TX_UNSTAKE_CONFIRMED' },
+    'tx-claimed': { pending: 'TOAST_TX_CLAIM_PENDING', confirmed: 'TOAST_TX_CLAIM_CONFIRMED' },
+} as const satisfies Record<
+    'tx-staked' | 'tx-unstaked' | 'tx-claimed',
+    Record<EarnTransactionStage, TranslationKey>
+>;
 
 export type NotificationRendererProps<
     T extends LocalizedNotificationEntry['type'] = LocalizedNotificationEntry['type'],
@@ -618,44 +631,16 @@ export const NotificationRenderer = ({
             );
 
         case 'tx-staked':
-            return (
-                <TransactionRenderer
-                    render={render}
-                    notification={notification}
-                    icon={PiggyBankIcon}
-                    variant="warning"
-                    message="TOAST_TX_STAKED"
-                    messageValues={{
-                        account: notification.descriptor,
-                    }}
-                />
-            );
-
         case 'tx-unstaked':
-            return (
-                <TransactionRenderer
-                    render={render}
-                    notification={notification}
-                    icon={PiggyBankIcon}
-                    variant="warning"
-                    message="TOAST_TX_UNSTAKED"
-                    messageValues={{
-                        account: notification.descriptor,
-                    }}
-                />
-            );
-
         case 'tx-claimed':
             return (
                 <TransactionRenderer
                     render={render}
                     notification={notification}
                     icon={PiggyBankIcon}
-                    variant="warning"
-                    message="TOAST_TX_CLAIMED"
-                    messageValues={{
-                        account: notification.descriptor,
-                    }}
+                    variant={notification.stage === 'confirmed' ? 'success' : 'warning'}
+                    message={EARN_TOAST_MESSAGES[notification.type][notification.stage]}
+                    messageValues={{}}
                 />
             );
 
