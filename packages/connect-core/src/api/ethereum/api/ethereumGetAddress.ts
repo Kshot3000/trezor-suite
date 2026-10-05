@@ -131,7 +131,7 @@ export default class EthereumGetAddress extends AbstractMethod<'ethereumGetAddre
     }
 
     // Networks that are not well-known need a definition. Its version depends on the device
-    // firmware, so it is fetched here and not in initAsync(), which runs before the device is known.
+    // firmware, so it is fetched here, once the device is known.
     private async getEncodedNetwork(path: number[]) {
         if (getEthereumNetwork(path)) return;
 

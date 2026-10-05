@@ -193,8 +193,8 @@ export default class SolanaSignTransaction extends AbstractMethod<'solanaSignTra
         }
     }
 
-    // The definition version depends on the device firmware, so it is fetched in run() and not
-    // in initAsync(), which runs before the device is known.
+    // The definition version depends on the device firmware, so it is fetched in run(), once the
+    // device is known.
     private async setTokenDefinition() {
         const additionalInfo = this.params.proto.additional_info;
         const token = additionalInfo?.token_accounts_infos?.[0];
