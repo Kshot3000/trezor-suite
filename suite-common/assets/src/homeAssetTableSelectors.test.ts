@@ -349,11 +349,19 @@ describe('the networks the table can be grouped by', () => {
         const after = stateWithEthereumBalance('2');
 
         const symbolsBefore = selectShownNetworkSymbols(before);
-        const bitcoinRowsBefore = selectShownWalletAssetKeysOfNetwork(before, BTC);
+        // Every section asks, as the table does: reselect keeps one previous result per selector,
+        // not one per argument, so asking for a single network would hide a cross-argument miss.
+        const rowsBefore = [BTC, ETH].map(symbol =>
+            selectShownWalletAssetKeysOfNetwork(before, symbol),
+        );
+        const rowsAfter = [BTC, ETH].map(symbol =>
+            selectShownWalletAssetKeysOfNetwork(after, symbol),
+        );
 
         expect(selectWalletAssetAmount(after, ethereumKey)).toBe('2');
         expect(selectShownNetworkSymbols(after)).toBe(symbolsBefore);
-        expect(selectShownWalletAssetKeysOfNetwork(after, BTC)).toBe(bitcoinRowsBefore);
+        expect(rowsAfter[0]).toBe(rowsBefore[0]);
+        expect(rowsAfter[1]).toBe(rowsBefore[1]);
     });
 
     it('hands back a new list when a balance change reorders the networks', () => {

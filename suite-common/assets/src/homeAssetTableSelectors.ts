@@ -155,19 +155,14 @@ export const selectShownWalletAssetKeys = createMemoizedSelector(
 
 export type HomeAssetGrouping = 'default' | 'networks';
 
-type ShownNetwork = {
-    assetKeys: WalletAssetKey[];
-    fiatValue: BigNumber;
-};
-
 /**
- * One pass over the shown assets answers all three questions the grouping asks: which networks
- * there are, which rows each holds, and what each is worth.
+ * Which rows belong to which network. Built from the shown keys and each key's symbol alone, so a
+ * balance or a rate leaves it untouched and every section keeps the very array it was handed.
  */
-const selectShownNetworksWithFiatBalance = createMemoizedSelector(
-    [selectWalletAssets, selectWalletAssetValues, selectShownWalletAssetKeys],
-    (assets, values, assetKeys): ReadonlyMap<NetworkSymbol, ShownNetwork> => {
-        const networks = new Map<NetworkSymbol, ShownNetwork>();
+const selectShownAssetKeysByNetwork = createMemoizedSelector(
+    [selectWalletAssets, selectShownWalletAssetKeys],
+    (assets, assetKeys): ReadonlyMap<NetworkSymbol, readonly WalletAssetKey[]> => {
+        const byNetwork = new Map<NetworkSymbol, WalletAssetKey[]>();
 
         assetKeys.forEach(assetKey => {
             const symbol = assets.get(assetKey)?.symbol;
@@ -176,43 +171,63 @@ const selectShownNetworksWithFiatBalance = createMemoizedSelector(
                 return;
             }
 
-            const fiatValue = values.get(assetKey) ?? ZERO_FIAT_VALUE;
-            const network = networks.get(symbol);
+            const held = byNetwork.get(symbol);
 
-            if (network === undefined) {
-                networks.set(symbol, { assetKeys: [assetKey], fiatValue });
+            if (held === undefined) {
+                byNetwork.set(symbol, [assetKey]);
 
                 return;
             }
 
-            network.assetKeys.push(assetKey);
-            network.fiatValue = network.fiatValue.plus(fiatValue);
+            held.push(assetKey);
         });
 
-        return networks;
+        return byNetwork;
+    },
+);
+
+/** What each network is worth. Only this is redone when a balance or a rate moves. */
+const selectNetworkFiatValues = createMemoizedSelector(
+    [selectShownAssetKeysByNetwork, selectWalletAssetValues],
+    (byNetwork, values): ReadonlyMap<NetworkSymbol, BigNumber> => {
+        const worth = new Map<NetworkSymbol, BigNumber>();
+
+        byNetwork.forEach((assetKeys, symbol) => {
+            worth.set(
+                symbol,
+                assetKeys.reduce(
+                    (total, assetKey) => total.plus(values.get(assetKey) ?? ZERO_FIAT_VALUE),
+                    ZERO_FIAT_VALUE,
+                ),
+            );
+        });
+
+        return worth;
     },
 );
 
 /** The networks the shown assets are held on, the most valuable network first. */
 export const selectShownNetworkSymbols = createMemoizedSelector(
-    [selectShownNetworksWithFiatBalance],
-    (networks): readonly NetworkSymbol[] =>
+    [selectShownAssetKeysByNetwork, selectNetworkFiatValues],
+    (byNetwork, worth): readonly NetworkSymbol[] =>
         returnStableArrayIfEmpty(
-            [...networks.entries()]
-                .sort(([, left], [, right]) => right.fiatValue.comparedTo(left.fiatValue) ?? 0)
-                .map(([symbol]) => symbol),
+            [...byNetwork.keys()].sort(
+                (left, right) =>
+                    (worth.get(right) ?? ZERO_FIAT_VALUE).comparedTo(
+                        worth.get(left) ?? ZERO_FIAT_VALUE,
+                    ) ?? 0,
+            ),
         ),
     { memoizeOptions: { resultEqualityCheck: shallowEqual } },
 );
 
+// No `resultEqualityCheck` on purpose: reselect keeps one previous result per selector rather than
+// one per argument, so with a section per network each would be compared against its neighbour's
+// list and none would ever match. Handing back the array the grouping already holds needs no check.
 export const selectShownWalletAssetKeysOfNetwork = createMemoizedSelector(
-    [
-        selectShownNetworksWithFiatBalance,
-        (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol,
-    ],
-    (networks, symbol): readonly WalletAssetKey[] =>
-        returnStableArrayIfEmpty(networks.get(symbol)?.assetKeys ?? []),
-    { memoizeOptions: { resultEqualityCheck: shallowEqual } },
+    [selectShownAssetKeysByNetwork, (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol],
+    (byNetwork, symbol): readonly WalletAssetKey[] =>
+        returnStableArrayIfEmpty(byNetwork.get(symbol) ?? []),
 );
 
 export const selectNetworkName = createMemoizedSelector(
@@ -221,11 +236,8 @@ export const selectNetworkName = createMemoizedSelector(
 );
 
 export const selectNetworkFiatValue = createMemoizedSelector(
-    [
-        selectShownNetworksWithFiatBalance,
-        (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol,
-    ],
-    (networks, symbol) => (networks.get(symbol)?.fiatValue ?? ZERO_FIAT_VALUE).toFixed(),
+    [selectNetworkFiatValues, (_state: HomeAssetTableState, symbol: NetworkSymbol) => symbol],
+    (worth, symbol) => (worth.get(symbol) ?? ZERO_FIAT_VALUE).toFixed(),
 );
 
 const selectWalletAsset = createMemoizedSelector(
