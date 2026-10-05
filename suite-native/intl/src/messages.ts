@@ -4707,6 +4707,10 @@ export const messages = {
             title: 'Earn with ETH',
             button: 'Explore vault',
         },
+        tradingExperiencePromoBanner: {
+            title: 'Trading in Suite just got an upgrade',
+            button: "See what's new",
+        },
         trezorSafe7PromoBanner: {
             title: 'Introducing Trezor Safe 7',
             button: 'Learn more',

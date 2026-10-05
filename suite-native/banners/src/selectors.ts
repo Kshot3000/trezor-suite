@@ -10,12 +10,13 @@ import {
 import {
     selectIsDefiYieldPromoBannerClosed,
     selectIsEthVaultPromoBannerClosed,
+    selectIsTradingExperiencePromoBannerClosed,
     selectIsTs7PromoBannerClosed,
 } from './bannerFlagsSlice';
 
 type PromoBannersRootState = MessageSystemRootState;
 
-export type VisiblePromoBannerKey = 'ts7' | 'defi-yield' | 'eth-vault';
+export type VisiblePromoBannerKey = 'ts7' | 'defi-yield' | 'eth-vault' | 'trading-experience';
 
 const selectPromoBannerMessages = (state: PromoBannersRootState) =>
     selectFeaturesConfig(state, Feature.banners.dashboard.promo);
@@ -64,21 +65,38 @@ export const selectIsEthVaultPromoBannerDisplayed = createSelector(
         !hasOnlyPortfolioDevice,
 );
 
+export const selectIsTradingExperiencePromoBannerDisplayed = createSelector(
+    [
+        selectPromoBannerMessages,
+        selectIsTradingExperiencePromoBannerClosed,
+        selectHasBitcoinOnlyFirmware,
+        selectHasOnlyPortfolioDevice,
+    ],
+    (bannerMessages, isClosed, hasBitcoinOnlyFirmware, hasOnlyPortfolioDevice) =>
+        isPromoBannerFeatureEnabled(bannerMessages, 'trading-experience') &&
+        !isClosed &&
+        !hasBitcoinOnlyFirmware &&
+        !hasOnlyPortfolioDevice,
+);
+
 export const selectVisiblePromoBanners = createSelector(
     [
         selectIsTs7PromoBannerDisplayed,
         selectIsDefiYieldPromoBannerDisplayed,
         selectIsEthVaultPromoBannerDisplayed,
+        selectIsTradingExperiencePromoBannerDisplayed,
     ],
     (
         isTs7PromoBannerDisplayed,
         isDefiYieldPromoBannerDisplayed,
         isEthVaultPromoBannerDisplayed,
+        isTradingExperiencePromoBannerDisplayed,
     ): VisiblePromoBannerKey[] => {
         const visibleBanners: VisiblePromoBannerKey[] = [];
         if (isTs7PromoBannerDisplayed) visibleBanners.push('ts7');
         if (isDefiYieldPromoBannerDisplayed) visibleBanners.push('defi-yield');
         if (isEthVaultPromoBannerDisplayed) visibleBanners.push('eth-vault');
+        if (isTradingExperiencePromoBannerDisplayed) visibleBanners.push('trading-experience');
 
         return visibleBanners;
     },
