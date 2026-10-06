@@ -1,3 +1,4 @@
+import { deepStrictEqual, ok, strictEqual } from 'node:assert';
 import { type SpawnSyncReturns, execFileSync, spawnSync } from 'node:child_process';
 
 import { enableIOSReducedMotion, restoreIOSReducedMotion } from './reducedMotion';
@@ -6,7 +7,9 @@ jest.mock('node:child_process');
 
 const execFileSyncMock = jest.mocked(execFileSync);
 const spawnSyncMock = jest.mocked(spawnSync);
-let isReducedMotionEnabled: boolean | undefined;
+const SIMULATOR_DEFAULTS_ARGS = ['simctl', 'spawn', 'simulator', 'defaults'];
+const REDUCED_MOTION_PREFERENCE_ARGS = ['com.apple.Accessibility', 'ReduceMotionEnabled'];
+let mockReducedMotionPreference: boolean | undefined;
 
 const mockCommandResult = (
     overrides: Partial<SpawnSyncReturns<string>> = {},
@@ -20,28 +23,60 @@ const mockCommandResult = (
     ...overrides,
 });
 
-describe('iOS E2E reduced motion', () => {
+const readMockReducedMotionPreference = (): SpawnSyncReturns<string> => {
+    if (mockReducedMotionPreference === undefined) {
+        return mockCommandResult({
+            status: 1,
+            stdout: '',
+            stderr: 'The domain/default pair does not exist',
+        });
+    }
+
+    return mockCommandResult({ stdout: mockReducedMotionPreference ? '1\n' : '0\n' });
+};
+
+describe('iOS simulator reduced motion preference lifecycle', () => {
     beforeEach(() => {
-        isReducedMotionEnabled = false;
-        spawnSyncMock.mockImplementation(() =>
-            mockCommandResult(
-                isReducedMotionEnabled === undefined
-                    ? {
-                          status: 1,
-                          stdout: '',
-                          stderr: 'The domain/default pair does not exist',
-                      }
-                    : { stdout: isReducedMotionEnabled ? '1\n' : '0\n' },
-            ),
-        );
-        execFileSyncMock.mockImplementation((_, args) => {
-            switch (args?.[4]) {
-                case 'write':
-                    isReducedMotionEnabled = args[8] === 'true';
+        mockReducedMotionPreference = false;
+        spawnSyncMock.mockImplementation((command, args) => {
+            strictEqual(command, 'xcrun');
+            deepStrictEqual(args, [
+                ...SIMULATOR_DEFAULTS_ARGS,
+                'read',
+                ...REDUCED_MOTION_PREFERENCE_ARGS,
+            ]);
+
+            return readMockReducedMotionPreference();
+        });
+        execFileSyncMock.mockImplementation((command, args) => {
+            strictEqual(command, 'xcrun');
+            deepStrictEqual(
+                args?.slice(0, SIMULATOR_DEFAULTS_ARGS.length),
+                SIMULATOR_DEFAULTS_ARGS,
+            );
+
+            const [operation, ...preferenceArgs] =
+                args?.slice(SIMULATOR_DEFAULTS_ARGS.length) ?? [];
+
+            switch (operation) {
+                case 'write': {
+                    const [, , , value] = preferenceArgs;
+                    deepStrictEqual(preferenceArgs, [
+                        ...REDUCED_MOTION_PREFERENCE_ARGS,
+                        '-bool',
+                        value,
+                    ]);
+                    ok(
+                        value === 'true' || value === 'false',
+                        'Expected a boolean preference value',
+                    );
+                    mockReducedMotionPreference = value === 'true';
 
                     return Buffer.from('');
+                }
                 case 'delete':
-                    isReducedMotionEnabled = undefined;
+                    deepStrictEqual(preferenceArgs, REDUCED_MOTION_PREFERENCE_ARGS);
+                    mockReducedMotionPreference = undefined;
 
                     return Buffer.from('');
                 default:
@@ -57,33 +92,33 @@ describe('iOS E2E reduced motion', () => {
     });
 
     it.each([false, true, undefined])('restores the original preference (%s)', originalValue => {
-        isReducedMotionEnabled = originalValue;
+        mockReducedMotionPreference = originalValue;
 
         enableIOSReducedMotion('simulator');
-        expect(isReducedMotionEnabled).toBe(true);
+        expect(mockReducedMotionPreference).toBe(true);
 
         restoreIOSReducedMotion();
-        expect(isReducedMotionEnabled).toBe(originalValue);
+        expect(mockReducedMotionPreference).toBe(originalValue);
     });
 
-    it('keeps the original preference across repeated app launches', () => {
+    it('keeps the original preference across repeated enable calls', () => {
         enableIOSReducedMotion('simulator');
         enableIOSReducedMotion('simulator');
 
         restoreIOSReducedMotion();
 
-        expect(isReducedMotionEnabled).toBe(false);
+        expect(mockReducedMotionPreference).toBe(false);
     });
 
-    it('captures the original preference again for the next test file', () => {
+    it('captures the current preference for a new enable/restore cycle', () => {
         enableIOSReducedMotion('simulator');
         restoreIOSReducedMotion();
 
-        isReducedMotionEnabled = true;
+        mockReducedMotionPreference = true;
         enableIOSReducedMotion('simulator');
         restoreIOSReducedMotion();
 
-        expect(isReducedMotionEnabled).toBe(true);
+        expect(mockReducedMotionPreference).toBe(true);
     });
 
     it('preserves the preference when the process fails', () => {
@@ -91,7 +126,7 @@ describe('iOS E2E reduced motion', () => {
         spawnSyncMock.mockReturnValueOnce(mockCommandResult({ error, status: null }));
 
         expect(() => enableIOSReducedMotion('simulator')).toThrow(error);
-        expect(isReducedMotionEnabled).toBe(false);
+        expect(mockReducedMotionPreference).toBe(false);
         expect(execFileSyncMock).not.toHaveBeenCalled();
     });
 
@@ -107,7 +142,7 @@ describe('iOS E2E reduced motion', () => {
         expect(() => enableIOSReducedMotion('simulator')).toThrow(
             'Failed to read reduced motion preference',
         );
-        expect(isReducedMotionEnabled).toBe(false);
+        expect(mockReducedMotionPreference).toBe(false);
         expect(execFileSyncMock).not.toHaveBeenCalled();
     });
 
@@ -117,7 +152,7 @@ describe('iOS E2E reduced motion', () => {
         expect(() => enableIOSReducedMotion('simulator')).toThrow(
             'Unexpected reduced motion preference',
         );
-        expect(isReducedMotionEnabled).toBe(false);
+        expect(mockReducedMotionPreference).toBe(false);
         expect(execFileSyncMock).not.toHaveBeenCalled();
     });
 
@@ -131,10 +166,10 @@ describe('iOS E2E reduced motion', () => {
         expect(restoreIOSReducedMotion).toThrow(error);
 
         restoreIOSReducedMotion();
-        expect(isReducedMotionEnabled).toBe(false);
+        expect(mockReducedMotionPreference).toBe(false);
     });
 
-    it('does not change any preference when no app was launched', () => {
+    it('does not write any preference when restore is called without enabling', () => {
         restoreIOSReducedMotion();
 
         expect(execFileSyncMock).not.toHaveBeenCalled();

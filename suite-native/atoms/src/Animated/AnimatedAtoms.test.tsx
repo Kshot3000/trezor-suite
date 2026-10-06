@@ -21,7 +21,7 @@ type TestAnimatedAtomProps = Pick<
     'entering' | 'exiting' | 'layout' | 'testID' | 'accessibilityLabel'
 > & {
     children: ReactNode;
-    style: { opacity: number };
+    style?: { opacity: number };
 };
 
 const animatedAtoms: [string, ComponentType<TestAnimatedAtomProps>][] = [
@@ -35,31 +35,48 @@ const animatedAtoms: [string, ComponentType<TestAnimatedAtomProps>][] = [
 ];
 
 describe.each(animatedAtoms)('%s', (_name, Component) => {
-    it.each([false, true])(
-        'respects reduced motion = %s and preserves content and styles',
-        async isReducedMotion => {
-            jest.mocked(useReducedMotion).mockReturnValue(isReducedMotion);
+    it.each<[string, boolean]>([
+        ['forwards layout animation builders when reduced motion is disabled', false],
+        ['omits layout animation builders when reduced motion is enabled', true],
+    ])('%s', async (_description, isReducedMotion) => {
+        jest.mocked(useReducedMotion).mockReturnValue(isReducedMotion);
 
-            const { getByTestId, getByText } = await renderWithBasicProvider(
-                <Component
-                    testID="animated-atom"
-                    entering={FadeIn}
-                    exiting={FadeOut}
-                    layout={LinearTransition}
-                    style={{ opacity: 0.7 }}
-                    accessibilityLabel="Animated content"
-                >
-                    <Text>Content</Text>
-                </Component>,
-            );
+        const { getByTestId } = await renderWithBasicProvider(
+            <Component
+                testID="animated-atom"
+                entering={FadeIn}
+                exiting={FadeOut}
+                layout={LinearTransition}
+            >
+                <Text>Content</Text>
+            </Component>,
+        );
 
-            const element = getByTestId('animated-atom');
-            expect(element.props.entering).toBe(isReducedMotion ? undefined : FadeIn);
-            expect(element.props.exiting).toBe(isReducedMotion ? undefined : FadeOut);
-            expect(element.props.layout).toBe(isReducedMotion ? undefined : LinearTransition);
-            expect(element).toHaveStyle({ opacity: 0.7 });
-            expect(element.props.accessibilityLabel).toBe('Animated content');
-            expect(getByText('Content')).toBeTruthy();
-        },
-    );
+        const element = getByTestId('animated-atom');
+        expect(element.props.entering).toBe(isReducedMotion ? undefined : FadeIn);
+        expect(element.props.exiting).toBe(isReducedMotion ? undefined : FadeOut);
+        expect(element.props.layout).toBe(isReducedMotion ? undefined : LinearTransition);
+    });
+
+    it('preserves content, style and accessibility label with reduced motion enabled', async () => {
+        jest.mocked(useReducedMotion).mockReturnValue(true);
+
+        const { getByTestId, getByText } = await renderWithBasicProvider(
+            <Component
+                testID="animated-atom"
+                entering={FadeIn}
+                exiting={FadeOut}
+                layout={LinearTransition}
+                style={{ opacity: 0.7 }}
+                accessibilityLabel="Animated content"
+            >
+                <Text>Content</Text>
+            </Component>,
+        );
+
+        const element = getByTestId('animated-atom');
+        expect(element).toHaveStyle({ opacity: 0.7 });
+        expect(element.props.accessibilityLabel).toBe('Animated content');
+        expect(getByText('Content')).toBeTruthy();
+    });
 });
