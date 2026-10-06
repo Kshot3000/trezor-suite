@@ -8,17 +8,20 @@
  *
  * `connectionId` is undefined only for calls that do not come from a connect-ws connection
  * (MCP); such calls cannot be canceled by a connect-ws connection.
+ *
+ * A cancel that names a `callId` acts only on the queued call the client gave that id to; a cancel
+ * without one (a closed connection, an older client) acts on all of the connection's queued calls.
  */
-export type ConnectPopupCallEntry = { canceled: boolean };
+export type ConnectPopupCallEntry = { callId: string | undefined; canceled: boolean };
 
 export const createConnectPopupCallTracker = () => {
     const queuedByConnection = new Map<string, Set<ConnectPopupCallEntry>>();
     let activeConnectionId: string | undefined;
 
     return {
-        // Register a received call while it waits in the queue.
-        register(connectionId: string | undefined): ConnectPopupCallEntry {
-            const entry: ConnectPopupCallEntry = { canceled: false };
+        // Register a received call while it waits in the queue, with the id the client gave it.
+        register(connectionId: string | undefined, callId?: string): ConnectPopupCallEntry {
+            const entry: ConnectPopupCallEntry = { callId, canceled: false };
             if (connectionId !== undefined) {
                 const set = queuedByConnection.get(connectionId) ?? new Set();
                 set.add(entry);
@@ -46,11 +49,12 @@ export const createConnectPopupCallTracker = () => {
             if (activeConnectionId === connectionId) activeConnectionId = undefined;
         },
 
-        // Flag a connection's queued calls so they self-reject instead of opening a popup.
-        cancelQueued(connectionId: string | undefined) {
+        // Flag a connection's queued calls so they self-reject instead of opening a popup: only
+        // the call named by `callId`, or all of them when the cancel names none.
+        cancelQueued(connectionId: string | undefined, callId?: string) {
             if (connectionId === undefined) return;
             queuedByConnection.get(connectionId)?.forEach(entry => {
-                entry.canceled = true;
+                if (!callId || entry.callId === callId) entry.canceled = true;
             });
         },
 

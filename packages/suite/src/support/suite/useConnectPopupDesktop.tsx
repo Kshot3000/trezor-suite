@@ -107,9 +107,11 @@ export const useConnectPopupDesktop = () => {
                 }
 
                 const { connectionId } = params;
+                // The id the client gave this call, if any; a cancel that names it is scoped to it.
+                const callId: string | undefined = params.payload?.callId;
                 // Register this call while it waits in the queue, so a cancel that arrives before
                 // it becomes active can flag it to self-reject on wake (see below).
-                const entry = callTracker.current.register(connectionId);
+                const entry = callTracker.current.register(connectionId, callId);
 
                 try {
                     const deferred = await queuePopupCall();
@@ -177,9 +179,10 @@ export const useConnectPopupDesktop = () => {
             });
             desktopApi.on('connect-popup/cancel', params => {
                 const { connectionId } = params;
-                // Flag this connection's queued calls so they self-reject instead of opening a
-                // popup once they reach the front of the queue.
-                callTracker.current.cancelQueued(connectionId);
+                // Flag this connection's queued calls (only the one the cancel names, if any) so
+                // they self-reject instead of opening a popup once they reach the front of the
+                // queue.
+                callTracker.current.cancelQueued(connectionId, params.callId);
                 // Only cancel the active call when this connection owns it, so that one client
                 // cannot cancel another client's active call.
                 if (callTracker.current.ownsActiveCall(connectionId)) {

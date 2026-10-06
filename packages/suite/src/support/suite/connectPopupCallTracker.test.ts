@@ -84,13 +84,40 @@ describe(createConnectPopupCallTracker.name, () => {
             expect(() => tracker.cancelQueued(undefined)).not.toThrow();
             expect(entry.canceled).toBe(false);
         });
+
+        it('flags only the queued call named by the cancel', () => {
+            const tracker = createConnectPopupCallTracker();
+            const first = tracker.register('ws-1', 'call-1');
+            const second = tracker.register('ws-1', 'call-2');
+            const unnamed = tracker.register('ws-1');
+
+            tracker.cancelQueued('ws-1', 'call-2');
+
+            expect(first.canceled).toBe(false);
+            expect(second.canceled).toBe(true);
+            expect(unnamed.canceled).toBe(false);
+        });
+
+        it('flags every queued call of the connection when the cancel names no call', () => {
+            const tracker = createConnectPopupCallTracker();
+            const first = tracker.register('ws-1', 'call-1');
+            const unnamed = tracker.register('ws-1');
+
+            tracker.cancelQueued('ws-1');
+
+            expect(first.canceled).toBe(true);
+            expect(unnamed.canceled).toBe(true);
+        });
     });
 
     describe('register / unregister', () => {
         it('registers with an un-canceled entry', () => {
             const tracker = createConnectPopupCallTracker();
 
-            expect(tracker.register('ws-1')).toEqual({ canceled: false });
+            expect(tracker.register('ws-1', 'call-1')).toEqual({
+                callId: 'call-1',
+                canceled: false,
+            });
         });
 
         it('stops tracking an entry once unregistered', () => {
