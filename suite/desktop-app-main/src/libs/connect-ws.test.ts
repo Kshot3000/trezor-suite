@@ -75,8 +75,12 @@ describe('connect-ws', () => {
             headers: { origin: 'https://example.com' },
         });
 
-        const send = async (message: object) => {
+        // Delivers a message without letting the server process it, for races between messages.
+        const receive = (message: object) => {
             ws.emit('message', Buffer.from(JSON.stringify(message)));
+        };
+        const send = async (message: object) => {
+            receive(message);
             await jest.advanceTimersByTimeAsync(0);
         };
         const getResponses = () =>
@@ -87,7 +91,7 @@ describe('connect-ws', () => {
 
         await send(handshake);
 
-        return { send, getResponses, close };
+        return { receive, send, getResponses, close };
     };
 
     beforeAll(() => {
@@ -183,5 +187,29 @@ describe('connect-ws', () => {
         ]);
 
         second.close();
+    });
+
+    it('delivers a cancel after the call it follows, even when the call is still being prepared', async () => {
+        const client = await connect();
+        client.receive(coreCall);
+        client.receive(coreCallCancel);
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(rendererSend.mock.calls.map(([channel]) => channel)).toEqual([
+            'connect-popup/call',
+            'connect-popup/cancel',
+        ]);
+
+        client.close();
+    });
+
+    it('does not forward a call whose connection closed while the call was being prepared', async () => {
+        const client = await connect();
+        client.receive(coreCall);
+        client.close();
+        await jest.advanceTimersByTimeAsync(0);
+
+        expect(getForwardedCalls()).toHaveLength(0);
+        expect(getForwardedCancels()).toHaveLength(1);
     });
 });
