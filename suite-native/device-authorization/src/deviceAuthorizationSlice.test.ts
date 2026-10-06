@@ -131,6 +131,22 @@ describe('deviceAuthorizationSlice', () => {
         );
     });
 
+    it.each([DeviceAuthorizationStep.PinRequested, DeviceAuthorizationStep.PassphraseRequested])(
+        'should reset %s to Idle for ButtonRequest_Other confirm_output (Cardano send)',
+        deviceAuthorizationStep => {
+            const prevState = getDeviceAuthorizationState({ deviceAuthorizationStep });
+
+            const state = deviceAuthorizationReducer(prevState, {
+                type: UI_EVENTS.BUTTON_REQUEST,
+                payload: { code: 'ButtonRequest_Other', name: 'confirm_output' },
+            });
+
+            expect(state).toEqual({
+                deviceAuthorizationStep: DeviceAuthorizationStep.Idle,
+            });
+        },
+    );
+
     describe('isSuiteSyncButtonRequest matcher', () => {
         it.each(['suite_sync', 'secure_sync'])(
             'should set deviceAuthorizationStep to ContinueOnTrezorRequested for %s button request',

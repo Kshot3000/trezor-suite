@@ -38,14 +38,22 @@ export const flowEndingButtonRequests = [
     'ButtonRequest_PublicKey',
 ] as const;
 
+// For some reason, Cardano do not use `ButtonRequest_ConfirmOutput`, so it has to be matched by name.
+const isFlowEndingButtonRequestByName = (payload: object) =>
+    'code' in payload &&
+    payload.code === 'ButtonRequest_Other' &&
+    'name' in payload &&
+    payload.name === 'confirm_output';
+
 export const isFlowEndingButtonRequest = (action: UnknownAction) =>
     action.type === UI_EVENTS.BUTTON_REQUEST &&
     typeof action.payload === 'object' &&
     isNotNullOrUndefined(action.payload) &&
     'code' in action.payload &&
-    flowEndingButtonRequests.includes(
+    (flowEndingButtonRequests.includes(
         action.payload.code as (typeof flowEndingButtonRequests)[number],
-    );
+    ) ||
+        isFlowEndingButtonRequestByName(action.payload));
 
 export const isSuiteSyncButtonRequest = (action: UnknownAction) =>
     action.type === UI_EVENTS.BUTTON_REQUEST &&
