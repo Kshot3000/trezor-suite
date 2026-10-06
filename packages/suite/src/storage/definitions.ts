@@ -9,6 +9,7 @@ import type { FlagsState } from '@suite/flags';
 import type { SuiteSettingsState } from '@suite/settings';
 import { type DesktopSuiteSyncState } from '@suite/suite-sync';
 import { type AnalyticsState } from '@suite-common/analytics-redux';
+import type { HomeAssetsTableState } from '@suite-common/assets';
 import { type AppRememberedPermission } from '@suite-common/connect-popup/src/connectPopupTypes';
 import type { DiscreetModeState } from '@suite-common/discreet-mode';
 import { type FeatureFeedbackState } from '@suite-common/feedback';
@@ -82,6 +83,10 @@ export interface SuiteDBSchema extends DBSchema {
             order: number;
             blockTime: number; // TODO: blockTime can be undefined
         };
+    };
+    homeAssetsTable: {
+        key: 'homeAssetsTable';
+        value: HomeAssetsTableState;
     };
     explorer: {
         key: NetworkSymbol;

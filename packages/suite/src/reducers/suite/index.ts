@@ -14,6 +14,7 @@ import { type RouterState, routerReducer } from '@suite/router';
 import { type SuiteSettingsState, prepareSuiteSettingsReducer } from '@suite/settings';
 import { type TorState, torReducer } from '@suite/tor';
 import { type AnalyticsState, prepareAnalyticsReducer } from '@suite-common/analytics-redux';
+import { type HomeAssetsTableState } from '@suite-common/assets';
 import { type ConnectPopupState, prepareConnectPopupReducer } from '@suite-common/connect-popup';
 import { type DiscreetModeState, discreetModeReducer } from '@suite-common/discreet-mode';
 import { type FeatureFeedbackState } from '@suite-common/feedback';
@@ -29,6 +30,7 @@ import { type WalletConnectState, prepareWalletConnectReducer } from '@suite-com
 import { extraDependencies } from 'src/support/extraDependencies';
 
 import guide, { type GuideState } from './guideReducer';
+import homeAssetsTable from './homeAssetsTableReducer';
 import protocol, { type ProtocolState } from './protocolReducer';
 import suite, { type SuiteState } from './suiteReducer';
 import window, { type WindowState } from './windowReducer';
@@ -65,10 +67,12 @@ export type SuiteReducersState = {
     featureFeedback: FeatureFeedbackState<FeedbackFeatureName>;
     connectPopup: ConnectPopupState;
     walletConnect: WalletConnectState;
+    homeAssetsTable: HomeAssetsTableState;
 };
 
 export const suiteReducers: ReducersMapObject<SuiteReducersState, UnknownAction> = {
     suite,
+    homeAssetsTable,
     discreetMode: discreetModeReducer,
     tor: torReducer,
     suiteSettings,

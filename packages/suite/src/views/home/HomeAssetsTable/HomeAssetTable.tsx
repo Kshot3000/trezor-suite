@@ -1,14 +1,18 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 
 import { Translation } from '@suite/intl';
 import {
     type HomeAssetGrouping,
+    selectHomeAssetGrouping,
     selectShownNetworkSymbols,
     selectShownWalletAssetKeys,
 } from '@suite-common/assets';
+import { useServices } from '@suite-common/dependency-injection';
+import { injectDispatch } from '@suite-common/redux-utils';
 import { type NetworkSymbol } from '@suite-common/wallet-config';
 import { Card, Table } from '@trezor/components';
 
+import { setHomeAssetGroupingThunk } from 'src/actions/suite/homeAssetsTableThunks';
 import { useSelector } from 'src/hooks/suite';
 
 import { HomeAssetNetworkSection } from './HomeAssetNetworkSection';
@@ -19,11 +23,19 @@ import { HOME_ASSET_CELL_PADDING } from './homeAssetTableLayout';
 const NO_NETWORKS: readonly NetworkSymbol[] = [];
 
 export const HomeAssetTable = () => {
-    const [grouping, setGrouping] = useState<HomeAssetGrouping>('default');
+    const { dispatch } = useServices(injectDispatch);
+    const grouping = useSelector(selectHomeAssetGrouping);
     const assetKeys = useSelector(selectShownWalletAssetKeys);
     // Grouping by networks is work the default arrangement must not pay for.
     const networkSymbols = useSelector(state =>
         grouping === 'networks' ? selectShownNetworkSymbols(state) : NO_NETWORKS,
+    );
+
+    const changeGrouping = useCallback(
+        (chosen: HomeAssetGrouping) => {
+            dispatch(setHomeAssetGroupingThunk({ grouping: chosen }));
+        },
+        [dispatch],
     );
 
     if (assetKeys.length === 0) {
@@ -38,7 +50,7 @@ export const HomeAssetTable = () => {
                         <Table.Cell padding={HOME_ASSET_CELL_PADDING.first}>
                             <HomeAssetTableFilterHeader
                                 grouping={grouping}
-                                onChange={setGrouping}
+                                onChange={changeGrouping}
                             />
                         </Table.Cell>
                         <Table.Cell align="end">
