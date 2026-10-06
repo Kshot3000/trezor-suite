@@ -92,6 +92,11 @@ export class StakingSection {
     readonly cardanoModalRewardAmount: Locator;
     readonly cardanoStakedFullBalanceText: Locator;
     readonly claimWarningBanner: Locator;
+    readonly cardanoOutdatedBanner: Locator;
+    readonly cardanoOutdatedBannerUpdateProviderButton: Locator;
+    readonly newProviderCard: Locator;
+    readonly newProviderCardUpdateProviderButton: Locator;
+    readonly earnDashboardUpdateProviderButton: Locator;
 
     constructor(private readonly page: Page) {
         this.rewardList = new RewardsList(page);
@@ -179,6 +184,19 @@ export class StakingSection {
         );
         this.cardanoStakedFullBalanceText = this.page.getByTestId('@account/staking/full-balance');
         this.claimWarningBanner = this.page.getByTestId('@modal/claim/fee-warning-banner');
+        this.cardanoOutdatedBanner = this.page.getByTestId(
+            '@staking/cardano-outdated-banner/container',
+        );
+        this.cardanoOutdatedBannerUpdateProviderButton = this.page.getByTestId(
+            '@staking/cardano-outdated-banner/update-provider-button',
+        );
+        this.newProviderCard = this.page.getByTestId('@staking/new-provider-card/container');
+        this.newProviderCardUpdateProviderButton = this.page.getByTestId(
+            '@staking/new-provider-card/update-provider-button',
+        );
+        this.earnDashboardUpdateProviderButton = this.page.getByTestId(
+            '@earn/dashboard/update-provider-button',
+        );
     }
 
     /**
