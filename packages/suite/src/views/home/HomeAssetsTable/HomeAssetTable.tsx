@@ -1,18 +1,17 @@
 import { useCallback } from 'react';
 
 import { Translation } from '@suite/intl';
-import {
-    type HomeAssetGrouping,
-    selectHomeAssetGrouping,
-    selectShownNetworkSymbols,
-    selectShownWalletAssetKeys,
-} from '@suite-common/assets';
+import { selectShownNetworkSymbols, selectShownWalletAssetKeys } from '@suite-common/assets';
 import { useServices } from '@suite-common/dependency-injection';
 import { injectDispatch } from '@suite-common/redux-utils';
 import { type NetworkSymbol } from '@suite-common/wallet-config';
+import {
+    selectHomeAssetsTableGrouping,
+    setHomeAssetsTableGrouping,
+} from '@suite-common/wallet-core';
+import { type HomeAssetsTableGrouping } from '@suite-common/wallet-types';
 import { Card, Table } from '@trezor/components';
 
-import { setHomeAssetGroupingThunk } from 'src/actions/suite/homeAssetsTableThunks';
 import { useSelector } from 'src/hooks/suite';
 
 import { HomeAssetNetworkSection } from './HomeAssetNetworkSection';
@@ -24,7 +23,7 @@ const NO_NETWORKS: readonly NetworkSymbol[] = [];
 
 export const HomeAssetTable = () => {
     const { dispatch } = useServices(injectDispatch);
-    const grouping = useSelector(selectHomeAssetGrouping);
+    const grouping = useSelector(selectHomeAssetsTableGrouping);
     const assetKeys = useSelector(selectShownWalletAssetKeys);
     // Grouping by networks is work the default arrangement must not pay for.
     const networkSymbols = useSelector(state =>
@@ -32,8 +31,8 @@ export const HomeAssetTable = () => {
     );
 
     const changeGrouping = useCallback(
-        (chosen: HomeAssetGrouping) => {
-            dispatch(setHomeAssetGroupingThunk({ grouping: chosen }));
+        (chosen: HomeAssetsTableGrouping) => {
+            dispatch(setHomeAssetsTableGrouping(chosen));
         },
         [dispatch],
     );

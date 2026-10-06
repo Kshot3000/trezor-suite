@@ -10,7 +10,6 @@ import { type RouterState } from '@suite/router';
 import { suiteSettingsInitialState } from '@suite/settings';
 import { initialSuiteSyncDesktopState } from '@suite/suite-sync';
 import { TorStatus } from '@suite/tor';
-import { homeAssetsTableInitialState } from '@suite-common/assets';
 import { type FirmwareUpdateState } from '@suite-common/firmware';
 import { messageSystemInitialState } from '@suite-common/message-system';
 import { type MetadataState } from '@suite-common/metadata-types';
@@ -26,7 +25,6 @@ import { walletReducers } from 'src/reducers/wallet';
 
 export const mockInitialAppState: AppState = {
     networks: null,
-    homeAssetsTable: homeAssetsTableInitialState,
     suite: suiteInitialState,
     discreetMode: {
         isActive: false,

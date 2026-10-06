@@ -14,7 +14,6 @@ import { selectMetadata, selectMetadataError } from '@suite/metadata';
 import { type SuiteSettingsRootState, selectSuiteSettings } from '@suite/settings';
 import { type DesktopSuiteSyncRootState, selectSuiteSync } from '@suite/suite-sync';
 import { type AnalyticsRootState, selectAnalytics } from '@suite-common/analytics-redux';
-import { type HomeAssetsTableRootState, selectHomeAssetsTable } from '@suite-common/assets';
 import { type WithBluetoothState, selectKnownDevices } from '@suite-common/bluetooth';
 import {
     type ConnectPopupStateRootState,
@@ -189,27 +188,6 @@ export const saveEarnOnboardingThunk =
         return confirmedOpportunities
             ? extra.services.db.addItem('earnOnboarding', confirmedOpportunities, accountKey, true)
             : undefined;
-    };
-
-type SaveHomeAssetsTableThunkState = HomeAssetsTableRootState;
-
-type SaveHomeAssetsTableThunkDeps = WithServices<DbDep>;
-
-export const saveHomeAssetsTableThunk =
-    () =>
-    async (
-        _dispatch: Dispatch<UnknownAction>,
-        getState: () => SaveHomeAssetsTableThunkState,
-        extra: SaveHomeAssetsTableThunkDeps,
-    ) => {
-        if (!extra.services.db.isAccessible()) return;
-
-        await extra.services.db.addItem(
-            'homeAssetsTable',
-            selectHomeAssetsTable(getState()),
-            'homeAssetsTable',
-            true,
-        );
     };
 
 const removeEarnOnboarding = (deps: DbDep, accountKey: AccountKey) => {
