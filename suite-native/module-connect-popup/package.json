@@ -8,6 +8,7 @@
     "scripts": {
         "depcheck": "yarn g:depcheck",
         "type-check": "yarn g:tsc --build",
+        "test:unit": "yarn g:jest:native",
         "lint:js": "yarn g:eslint '**/*.{ts,tsx,js}'"
     },
     "dependencies": {
@@ -16,6 +17,7 @@
         "@suite-common/dependency-injection": "workspace:*",
         "@suite-common/device": "workspace:*",
         "@suite-common/icons": "workspace:*",
+        "@suite-common/message-system": "workspace:*",
         "@suite-common/redux-utils": "workspace:*",
         "@suite-common/tx-simulation": "workspace:*",
         "@suite-common/wallet-config": "workspace:^",
@@ -31,6 +33,7 @@
         "@suite-native/formatters": "workspace:*",
         "@suite-native/icons": "workspace:^",
         "@suite-native/intl": "workspace:^",
+        "@suite-native/link": "workspace:*",
         "@suite-native/navigation": "workspace:*",
         "@suite-native/qr-code": "workspace:^",
         "@suite-native/toasts": "workspace:^",
@@ -47,6 +50,7 @@
         "react-redux": "9.3.0"
     },
     "devDependencies": {
+        "@suite-native/test-utils-store": "workspace:*",
         "@trezor/requirements": "workspace:*"
     }
 }

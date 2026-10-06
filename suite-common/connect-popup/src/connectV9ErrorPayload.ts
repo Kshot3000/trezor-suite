@@ -9,7 +9,9 @@ export type ConnectV9ErrorPayload = Partial<ConnectSerializedError> & {
 /**
  * Builds the `payload` of a failed Suite desktop response for Connect 9 clients. They show the
  * error text from `payload.error` and decide about a fallback by `payload.code`, so both are
- * needed. Connect 10 clients read only the `error` field of the response and ignore this payload.
+ * needed. Connect 10 clients of Suite desktop read only the `error` field of the response and
+ * ignore this payload. The answer to a deeplink call from a Connect 9 app gets the same payload,
+ * because `@trezor/connect-mobile` passes only `success` and `payload` to the app.
  */
 export const toConnectV9ErrorPayload = (
     error: Partial<ConnectSerializedError> | undefined,

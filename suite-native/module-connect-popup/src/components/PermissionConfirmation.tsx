@@ -20,6 +20,7 @@ import {
 } from '@suite-native/atoms';
 import { Translation } from '@suite-native/intl';
 
+import { ConnectV9Notice } from './ConnectV9Notice';
 import { GroupedPermissionsList } from './GroupedPermissionsList';
 import { ConnectAppIcon } from '../components/ConnectAppIcon';
 
@@ -63,6 +64,8 @@ export const PermissionConfirmation = () => {
                 title={<Translation id="moduleConnectPopup.grantPermission.title" />}
                 subtitle={<Translation id="moduleConnectPopup.grantPermission.message" />}
             />
+
+            <ConnectV9Notice source={popupCall.source} />
 
             <Card>
                 <HStack alignItems="center" spacing="sp16">
